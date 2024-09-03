@@ -1,0 +1,69 @@
+﻿@page "/user-claims"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>User Claims</PageTitle>
+
+<h1>User Claims</h1>
+
+@if (claims is not null && claims.Any())
+{
+    <ul>
+        @foreach (var claim in claims)
+        {
+            <li><b>@claim.Type:</b> @claim.Value</li>
+        }
+    </ul>
+}
+
+<p>
+    User is in role 'Admin': @isAdmin
+</p>
+
+<p>
+    User is in role 'Developer': @isDev
+</p>
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <p>User is an Admin in AuthorizeView</p>
+    </Authorized>
+    <NotAuthorized>
+        <p>User is NOT an Admin in AuthorizeView</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+<AuthorizeView Roles="Developer">
+    <Authorized>
+        <p>User is a Developer in AuthorizeView</p>
+    </Authorized>
+    <NotAuthorized>
+        <p>User is NOT an Developer in AuthorizeView</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private IEnumerable<Claim>? claims;
+    private bool isAdmin;
+    private bool isDev;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState == null)
+        {
+            return;
+        }
+
+        var authState = await AuthState;
+        claims = authState.User.Claims;
+
+        var user = authState?.User;
+
+        isAdmin = user?.IsInRole("Admin") ?? false;
+        isDev = user?.IsInRole("Developer") ?? false;
+    }
+}
