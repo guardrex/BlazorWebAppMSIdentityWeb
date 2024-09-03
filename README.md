@@ -48,7 +48,7 @@ The key parts of the sample to pay attention to are ...
   -     ["Cookies", "MicrosoftOidc"]));
   + group.MapPost("/logout", ([FromForm] string? returnUrl) => 
   +     TypedResults.SignOut(GetAuthProperties(returnUrl), [ OpenIdConnectDefaults.AuthenticationScheme ]));
-```
+  ```
 
 * See the updated `UserData.cs` file in the client app.
 
