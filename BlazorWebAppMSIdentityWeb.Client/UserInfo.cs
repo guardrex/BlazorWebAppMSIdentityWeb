@@ -50,13 +50,6 @@ public sealed class UserInfo()
             nameType: NameClaimType,
             roleType: RoleClaimType));
 
-    /*
-    private static string GetRequiredClaim(ClaimsPrincipal principal,
-        string claimType) =>
-            principal.FindFirst(claimType)?.Value ??
-            throw new InvalidOperationException(
-                $"Could not find required '{claimType}' claim.");
-    */
     private static string GetRequiredClaim(ClaimsPrincipal principal,
         string claimType) =>
             principal.FindFirst(claimType)?.Value ??
@@ -64,46 +57,3 @@ public sealed class UserInfo()
                 $"Could not find required '{claimType}' claim.");
 
 }
-
-/*
-public sealed class UserInfo
-{
-    public required string Email { get; init; }
-    public required string Name { get; init; }
-
-    public required string[] Roles { get; init; }
-
-    public required string UserId { get; init; }
-
-    private const string UserIdClaimType = "preferred_username";
-    public const string NameClaimType = "name";
-    private const string RoleClaimType = "roles";
-    private const string CustomClaimType = "userid";
-
-    public static UserInfo FromClaimsPrincipal(ClaimsPrincipal principal) =>
-        new()
-        {
-            Email = GetRequiredClaim(principal, UserIdClaimType),
-            Name = GetRequiredClaim(principal, NameClaimType),
-            Roles = principal.FindAll(RoleClaimType).Select(c => c.Value).ToArray(),
-            UserId = (GetRequiredClaim(principal, UserIdClaimType).Split("@")[0])
-        };
-
-    public ClaimsPrincipal ToClaimsPrincipal() =>
-        new(new ClaimsIdentity(
-            Roles.Select(role => new Claim(RoleClaimType, role))
-                .Concat(new[]
-                {
-                    new Claim(UserIdClaimType, Email),
-                    new Claim(NameClaimType, Name),
-                    new Claim(CustomClaimType, UserId)
-                }),
-            authenticationType: nameof(UserInfo),
-            nameType: NameClaimType,
-            roleType: RoleClaimType));
-
-    private static string GetRequiredClaim(ClaimsPrincipal principal, string claimType) =>
-        principal.FindFirst(claimType)?.Value ??
-        throw new InvalidOperationException($"Could not find required '{claimType}' claim.");
-}
-*/
