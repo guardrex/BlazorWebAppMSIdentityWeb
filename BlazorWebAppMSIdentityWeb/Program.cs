@@ -3,29 +3,83 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Web;
+using Microsoft.Graph;
+using Microsoft.Kiota.Abstractions.Authentication;
 using BlazorWebAppMSIdentityWeb;
-using BlazorWebAppMSIdentityWeb.Components;
 using BlazorWebAppMSIdentityWeb.Client.Weather;
+using BlazorWebAppMSIdentityWeb.Components;
+using BlazorWebAppMSIdentityWeb.Graph;
 using BlazorWebAppMSIdentityWeb.Weather;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
-JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
-
-builder.Services.Configure<CookiePolicyOptions>(options =>
-{
-    // This lambda determines whether user consent for non-essential cookies is needed for a given request.
-    options.CheckConsentNeeded = context => true;
-    options.MinimumSameSitePolicy = SameSiteMode.Unspecified;
-    // Handling SameSite cookie according to https://docs.microsoft.com/en-us/aspnet/core/security/samesite?view=aspnetcore-3.1
-    options.HandleSameSiteCookieCompatibility();
-});
-
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration)
-    .EnableTokenAcquisitionToCallDownstreamApi(builder.Configuration.GetValue<string>("DownstreamApi:Scopes")?.Split(' '))
+    .AddMicrosoftIdentityWebApp(options =>
+    {
+        builder.Configuration.Bind("AzureAd", options);
+
+        options.Prompt = "select_account";
+
+        options.Events.OnTokenValidated = async context =>
+        {
+            var tokenAcquisition = context.HttpContext.RequestServices
+                .GetRequiredService<ITokenAcquisition>();
+
+            var graphClient = new GraphServiceClient(
+                new BaseBearerTokenAuthenticationProvider(
+                    new TokenAcquisitionTokenProvider(
+                        tokenAcquisition,
+                        builder.Configuration.GetSection("DownstreamApi:Scopes").Get<string[]>()!,
+                        context.Principal)));
+            
+            var memberOf = graphClient.Me.MemberOf;
+
+            var graphDirectoryRoles = await memberOf.GraphDirectoryRole.GetAsync();
+
+            if (context.Principal?.Identity is not ClaimsIdentity identity)
+            {
+                // Log missing Identity?
+                return;
+            }
+
+            if (graphDirectoryRoles?.Value is not null)
+            {
+                foreach (var entry in graphDirectoryRoles.Value)
+                {
+                    if (entry.RoleTemplateId is not null)
+                    {
+                        identity.AddClaim(
+                            new Claim("directoryRole", entry.RoleTemplateId));
+                    }
+                }
+            }
+
+            var graphGroup = await memberOf.GraphGroup.GetAsync();
+
+            if (graphGroup?.Value is not null)
+            {
+                foreach (var entry in graphGroup.Value)
+                {
+                    if (entry.Id is not null)
+                    {
+                        identity.AddClaim(
+                            new Claim("groups", entry.Id));
+                    }
+                }
+            }
+        };
+    })
+    .EnableTokenAcquisitionToCallDownstreamApi(builder.Configuration.GetValue<IEnumerable<string>>("DownstreamApi:Scopes"))
     .AddMicrosoftGraph(builder.Configuration.GetSection("DownstreamApi"))
     .AddInMemoryTokenCaches();
+
+builder.Services.Configure<MicrosoftIdentityOptions>(OpenIdConnectDefaults.AuthenticationScheme, oidcOptions =>
+{
+    oidcOptions.MapInboundClaims = false;
+    oidcOptions.TokenValidationParameters.NameClaimType = JwtRegisteredClaimNames.Name;
+    oidcOptions.TokenValidationParameters.RoleClaimType = "roles";
+});
 
 builder.Services.AddAuthorization();
 
@@ -58,8 +112,6 @@ else
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
-
-app.UseCookiePolicy();
 
 app.UseAntiforgery();
 

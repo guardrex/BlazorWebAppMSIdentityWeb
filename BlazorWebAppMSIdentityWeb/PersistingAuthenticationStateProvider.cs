@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using BlazorWebAppMSIdentityWeb.Client;
-using Microsoft.Graph;
-using System.Security.Claims;
 
 namespace BlazorWebAppMSIdentityWeb;
 
@@ -15,11 +13,8 @@ internal sealed class PersistingAuthenticationStateProvider : AuthenticationStat
     private readonly PersistingComponentStateSubscription subscription;
     private Task<AuthenticationState>? authenticationStateTask;
 
-    private readonly GraphServiceClient graphServiceClient;
-
-    public PersistingAuthenticationStateProvider(PersistentComponentState state, GraphServiceClient graphServiceClient)
+    public PersistingAuthenticationStateProvider(PersistentComponentState state)
     {
-        this.graphServiceClient = graphServiceClient;
         persistentComponentState = state;
         subscription = state.RegisterOnPersisting(OnPersistingAsync, RenderMode.InteractiveWebAssembly);
     }
@@ -39,39 +34,6 @@ internal sealed class PersistingAuthenticationStateProvider : AuthenticationStat
 
         if (principal.Identity?.IsAuthenticated == true)
         {
-            var claimsIdentity = (ClaimsIdentity)principal.Identity;
-            var memberOf = graphServiceClient.Me.MemberOf;
-
-            var graphDirectoryRoles = await memberOf.GraphDirectoryRole.GetAsync();
-
-            if (graphDirectoryRoles?.Value is not null)
-            {
-                foreach (var entry in graphDirectoryRoles.Value)
-                {
-                    if (entry.RoleTemplateId is not null)
-                    {
-                        claimsIdentity.AddClaim(
-                            new Claim("directoryRole", entry.RoleTemplateId));
-                    }
-                }
-            }
-
-            var graphGroup = await memberOf.GraphGroup.GetAsync();
-
-            if (graphGroup?.Value is not null)
-            {
-                foreach (var entry in graphGroup.Value)
-                {
-                    if (entry.Id is not null)
-                    {
-                        claimsIdentity.AddClaim(
-                            new Claim("groups", entry.Id));
-                    }
-                }
-            }
-
-            principal = new ClaimsPrincipal(claimsIdentity);
-
             persistentComponentState.PersistAsJson(nameof(UserInfo), UserInfo.FromClaimsPrincipal(principal));
         }
     }
