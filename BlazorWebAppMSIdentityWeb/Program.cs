@@ -30,7 +30,7 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
                 new BaseBearerTokenAuthenticationProvider(
                     new TokenAcquisitionTokenProvider(
                         tokenAcquisition,
-                        builder.Configuration.GetSection("DownstreamApi:Scopes").Get<string[]>()!,
+                        builder.Configuration.GetSection("DownstreamApi:Scopes").Get<string[]>() ?? [ "User.Read" ],
                         context.Principal)));
             
             var memberOf = graphClient.Me.MemberOf;
