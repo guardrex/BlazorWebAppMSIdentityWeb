@@ -30,7 +30,7 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
                 new BaseBearerTokenAuthenticationProvider(
                     new TokenAcquisitionTokenProvider(
                         tokenAcquisition,
-                        builder.Configuration.GetSection("DownstreamApi:Scopes").Get<string[]>() ?? [ "User.Read" ],
+                        builder.Configuration.GetValue<string[]>("DownstreamApi:Scopes") ?? [ "User.Read" ],
                         context.Principal)));
             
             var memberOf = graphClient.Me.MemberOf;
@@ -70,7 +70,7 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
             }
         };
     })
-    .EnableTokenAcquisitionToCallDownstreamApi(builder.Configuration.GetValue<IEnumerable<string>>("DownstreamApi:Scopes"))
+    .EnableTokenAcquisitionToCallDownstreamApi(builder.Configuration.GetValue<string[]>("DownstreamApi:Scopes"))
     .AddMicrosoftGraph(builder.Configuration.GetSection("DownstreamApi"))
     .AddInMemoryTokenCaches();
 
